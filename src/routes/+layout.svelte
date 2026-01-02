@@ -6,6 +6,10 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
+	<!-- Preload critical images -->
+	<link rel="preload" as="image" href="https://raw.githubusercontent.com/hiibolt/nixos/master/backgrounds/12.jpg" />
+	<!-- DNS prefetch for external image domains -->
+	<link rel="dns-prefetch" href="https://raw.githubusercontent.com" />
 </svelte:head>
 
 <style>

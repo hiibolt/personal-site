@@ -30,12 +30,24 @@
 				loadAllBlogPosts()
 					.then((posts) => {
 						blogPosts = posts;
+						// Preload blog post images
+						preloadBlogImages(posts);
 					})
 					.catch(() => {
 						console.error('Error loading blog posts');
 					});
 			}
 		}
+	}
+
+	function preloadBlogImages(posts: BlogPost[]) {
+		posts.forEach((post) => {
+			const link = document.createElement('link');
+			link.rel = 'preload';
+			link.as = 'image';
+			link.href = post.meta.image;
+			document.head.appendChild(link);
+		});
 	}
 
 	function handleSelectBlogPost(post: BlogPost) {
