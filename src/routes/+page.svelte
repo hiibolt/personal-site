@@ -19,8 +19,32 @@
             let computer_overlay_image: any;
 
             let phase: number = 0;
-            let snowflakes: any[] = [];
-            let commands: string[] = [];
+
+            interface Snowflake {
+                x: number;
+                y: number;
+                v_x: number;
+                v_y: number;
+                size: number;
+            };
+            let snowflakes: Snowflake[] = [];
+
+            const help_text = ['clear - Clears terminal', 'about - About @hiibolt'];
+            let terminal_history: string[] = ['> help', ...help_text];
+            let terminal_input: string = '';
+            function pushToTerminalHistory ( str: string ) {
+                let line = '';
+                for ( let char of str ) {
+                    line += char;
+                    if ( line.length >= 50 ) {
+                        terminal_history.push(line);
+                        line = '';
+                    }
+                }
+                if ( line.length > 0 ) {
+                    terminal_history.push(line);
+                }
+            }
 
 			const sketch = (p: any) => {
 				p.setup = () => {
@@ -127,6 +151,7 @@
                     p.translate(-230, -130);
                     p.image(computer_overlay_image, 0, 0, 1920 * 1.2, 1080 * 1.2);
 
+                    // computer screen glow
                     p.noStroke();
                     const size = 32;
                     const brightness = 205;
@@ -143,7 +168,38 @@
                     p.fill(25);
                     p.rect(871, 675, 652, 380);
 
+                    // terminal history
+                    p.fill(255, 255, 255, 150);
+                    p.textSize(20);
+                    p.textFont('Courier New');
+                    let text_y = 710;
+                    for ( let ind = Math.max(0, terminal_history.length - 13); ind < terminal_history.length; ind++ ) {
+                        p.text(terminal_history[ind], 890, text_y);
+                        text_y += 25;
+                    }
+
+                    // input prompt
+                    let underscore = p.frameCount % 40 < 20 ? "_" : " ";
+                    p.text(`> ${terminal_input}${underscore}`, 890, text_y);
+
+                    // computer reflection
+                    const spacing = 25;
+                    const reflection_color = 155;
+                    const opacity = 3;
+                    for ( let i = 0; i < 15; i++ ) {
+                        p.fill(reflection_color, reflection_color, reflection_color, opacity);
+                        p.rect(871, 675 + i * spacing, 652, 380 - i * spacing);
+                    }
                     p.pop();
+
+                    // shadows
+                    for ( let i = 0; i < 10; i++ ) {
+                        p.noStroke();
+                        p.fill(0, 0, 0, 9);
+                        p.rect(-20, 0, i * 50, 1080);
+                        p.rect(1920 + 20 - i * 50, 0, i * 50, 1080);
+                        p.rect(-20, 1080 - i * 30, 1920 + 40, 1080);
+                    }
 
                     p.pop();
 				};
@@ -151,6 +207,41 @@
 				p.windowResized = () => {
 					p.resizeCanvas(p.windowWidth, p.windowHeight);
 				};
+
+                p.keyPressed = () => {
+                    // backspace key
+                    if ( p.keyCode === 8 ) { 
+                        terminal_input = terminal_input.slice(0, -1);
+                        return;
+                    }
+
+                    // enter key
+                    if ( p.keyCode === 13 ) { 
+                        // clear commmand
+                        if ( terminal_input === 'clear' ) {
+                            terminal_history = [];
+                            terminal_input = '';
+                            return;
+                        }
+
+                        // other commands
+                        terminal_history.push(`> ${terminal_input}`);
+                        if ( terminal_input === 'about' ) {
+                            pushToTerminalHistory('hiii :3');
+                        } else if ( terminal_input === 'help' ) {
+                            terminal_history.push(...help_text);
+                        } else {
+                            terminal_history.push(`Command not found: ${terminal_input}`);
+                        }
+
+                        terminal_input = '';
+                        return;
+                    }
+                    
+                    if ( p.key.length === 1 ) {
+                        terminal_input += p.key;
+                    }
+                };
 			};
 
 			p5Instance = new p5(sketch, canvasContainer);
