@@ -1,10 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import { loadAllBlogPosts } from '$lib/blogParser';
+	import type { BlogPost } from '$lib/blogParser';
 	
 	let canvasContainer: HTMLDivElement;
 	let p5Instance: any;
 	let showAboutModal = false;
+	let showBlogModal = false;
+	let showBlogPostModal = false;
+	let blogPosts: BlogPost[] = [];
+	let selectedBlogPost: BlogPost | null = null;
 
 	onMount(() => {
 		if (!browser) return;
@@ -32,7 +38,13 @@
             let snowflakes: Snowflake[] = [];
 
             // terminal state
-            const help_text = ['about - About @hiibolt', 'clear - Clears terminal'];
+            const help_text = [
+                'about    - About @hiibolt',
+                "blog     - Open @hiibolt's blog",
+                "projects - View @hiibolt's projects",
+                "resume   - View @hiibolt's resume",
+                'clear    - Clears terminal'
+            ];
             let terminal_history: string[] = ['> help', ...help_text];
             let terminal_input: string = '';
 
@@ -244,8 +256,16 @@
                         // other commands
                         terminal_history.push(`> ${terminal_input}`);
                         if ( terminal_input === 'about' ) {
-                            pushToTerminalHistory('hiii :3');
                             showAboutModal = true;
+                        } else if ( terminal_input === 'blog' ) {
+                            showBlogModal = true;
+                            if (blogPosts.length === 0) {
+                                loadAllBlogPosts().then((posts) => {
+                                    blogPosts = posts;
+                                }).catch(() => {
+                                    terminal_history.push('Error loading blog posts');
+                                });
+                            }
                         } else if ( terminal_input === 'help' ) {
                             terminal_history.push(...help_text);
                         } else {
@@ -291,31 +311,130 @@
             onclick={(e) => e.stopPropagation()}
         >
             <div class="modal-header">
-                <span class="modal-title">About @hiibolt</span>
+                <span class="modal-title">About Me</span>
                 <button class="modal-close" type="button" onclick={() => showAboutModal = false} aria-label="Close">✕</button>
             </div>
+            <div class="modal-banner">
+                <img src="https://raw.githubusercontent.com/hiibolt/nixos/master/backgrounds/12.jpg" alt="Banner" />
+            </div>
             <div class="modal-body">
-                <div class="modal-icon">
-                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="4" y="8" width="40" height="32" rx="4" fill="#5c4033" stroke="#d4a574" stroke-width="2"/>
-                        <rect x="8" y="12" width="32" height="24" rx="2" fill="#4a3728"/>
-                        <rect x="12" y="16" width="24" height="16" rx="1" fill="#5c4033"/>
-                        <circle cx="24" cy="24" r="3" fill="#d4a574"/>
-                        <rect x="20" y="32" width="8" height="2" rx="1" fill="#d4a574"/>
-                    </svg>
-                </div>
                 <div class="modal-text">
-                    <h2>Hi, I’m @hiibolt!</h2>
-                    <p>Full-stack developer, Svelte enthusiast, and creative technologist.<br>
-                    I love building interactive web experiences and exploring new tech.<br>
-                    <span style="color:#d4a574;">Let's connect and build something awesome!</span></p>
+                    <h2>Hi there, I’m @hiibolt!</h2>
+                    <p>I'm an enthusiastic Rust developer who loves all things tech -<br>
+                    If I'm not programming, I'm messing with NixOS or Kubernetes on my homelab :3<br>
+                </div>
+            </div>            
+            <div class="modal-hobbies">
+                <h3>Hobbies</h3>
+                <div class="hobby-tags">
+                    <span class="hobby-tag">Motorcycling</span>
+                    <span class="hobby-tag">Electric Skateboarding</span>
+                    <span class="hobby-tag">Snowboarding</span>
+                    <span class="hobby-tag">Food</span>
+                    <span class="hobby-tag">EDM</span>
+                    <span class="hobby-tag">Cars</span>
+                </div>
+            </div>
+            <div class="modal-hobbies">
+                <h3>Tech Interests</h3>
+                <div class="hobby-tags">
+                    <span class="hobby-tag">Svelte</span>
+                    <span class="hobby-tag">Nix / NixOS</span>
+                    <span class="hobby-tag">Rust</span>
+                    <span class="hobby-tag">Kubernetes</span>
+                    <span class="hobby-tag">Impermanence</span>
+                    <span class="hobby-tag">Declarative State</span>
                 </div>
             </div>
         </div>
     </div>
 {/if}
 
+<!-- Blog List Modal -->
+{#if showBlogModal && !showBlogPostModal}
+  <div
+    class="modal-backdrop"
+    role="dialog"
+    aria-modal="true"
+    tabindex="0"
+    aria-label="Blog posts"
+    style="outline: none;"
+    onkeydown={(e) => { if (e.key === 'Escape') { showBlogModal = false; } }}
+  >
+    <div
+      class="modal tech-modal blog-modal"
+      role="document"
+      onclick={(e) => e.stopPropagation()}
+    >
+      <div class="modal-header">
+        <span class="modal-title">Blog</span>
+        <button class="modal-close" type="button" onclick={() => showBlogModal = false} aria-label="Close">✕</button>
+      </div>
+      <div class="blog-list">
+        {#each blogPosts as post (post.meta.slug)}
+          <div class="blog-item" onclick={() => { selectedBlogPost = post; showBlogPostModal = true; }}>
+            <div class="blog-item-image">
+              <img src={post.meta.image} alt={post.meta.title} />
+            </div>
+            <div class="blog-item-content">
+              <h3>{post.meta.title}</h3>
+              <p>{post.meta.description}</p>
+              <div class="blog-item-meta">
+                <span class="blog-date">{new Date(post.meta.date).toLocaleDateString()}</span>
+                <div class="blog-tags">
+                  {#each post.meta.tags as tag}
+                    <span class="blog-tag">{tag}</span>
+                  {/each}
+                </div>
+              </div>
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Blog Post Detail Modal -->
+{#if showBlogPostModal && selectedBlogPost}
+  <div
+    class="modal-backdrop"
+    role="dialog"
+    aria-modal="true"
+    tabindex="0"
+    aria-label="Blog post"
+    style="outline: none;"
+    onkeydown={(e) => { if (e.key === 'Escape') { showBlogPostModal = false; selectedBlogPost = null; } }}
+  >
+    <div
+      class="modal tech-modal blog-post-modal"
+      role="document"
+      onclick={(e) => e.stopPropagation()}
+    >
+      <div class="modal-header">
+        <span class="modal-title">{selectedBlogPost.meta.title}</span>
+        <button class="modal-close" type="button" onclick={() => { showBlogPostModal = false; selectedBlogPost = null; }} aria-label="Close">✕</button>
+      </div>
+      <div class="blog-post-banner">
+        <img src={selectedBlogPost.meta.image} alt={selectedBlogPost.meta.title} />
+      </div>
+      <div class="blog-post-meta">
+        <span class="blog-date">{new Date(selectedBlogPost.meta.date).toLocaleDateString()}</span>
+        <div class="blog-tags">
+          {#each selectedBlogPost.meta.tags as tag}
+            <span class="blog-tag">{tag}</span>
+          {/each}
+        </div>
+      </div>
+      <div class="blog-post-content">
+        {@html selectedBlogPost.html}
+      </div>
+    </div>
+  </div>
+{/if}
+
 <style>
+    /* stylelint-disable-next-line no-descending-specificity */
     .canvas-container {
         width: 100vw;
         height: 100vh;
@@ -360,6 +479,17 @@
         padding: 1rem 1.5rem;
         border-bottom: 1px solid #d4a574;
     }
+    .modal-banner {
+        width: 100%;
+        height: 200px;
+        overflow: hidden;
+    }
+    .modal-banner img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
     .modal-title {
         font-size: 1.2rem;
         font-weight: bold;
@@ -383,16 +513,6 @@
         gap: 1.5rem;
         padding: 2rem 2rem 1rem 2rem;
     }
-    .modal-icon {
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #4a3728;
-        border-radius: 12px;
-        padding: 0.75rem;
-        box-shadow: 0 2px 8px 0 rgba(212,165,116,0.15);
-    }
     .modal-text h2 {
         margin: 0 0 0.5rem 0;
         font-size: 1.3rem;
@@ -403,29 +523,234 @@
         font-size: 1rem;
         color: #f5f1de;
     }
-    .modal-footer {
-        display: flex;
-        justify-content: flex-end;
-        padding: 1rem 2rem 1.5rem 2rem;
-        background: #4a3728;
+    .modal-hobbies {
+        padding: 1.5rem 2rem;
         border-top: 1px solid #d4a574;
     }
-    .modal-btn {
-        background: #d4a574;
-        color: #4a3728;
-        border: none;
-        border-radius: 8px;
-        padding: 0.5rem 1.5rem;
+    .modal-hobbies h3 {
+        margin: 0 0 1rem 0;
         font-size: 1rem;
-        font-weight: bold;
-        cursor: pointer;
+        color: #d4a574;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .hobby-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+    .hobby-tag {
+        display: inline-block;
+        background: rgba(212, 165, 116, 0.15);
+        color: #d4a574;
+        padding: 0.4rem 0.9rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        border: 1px solid #d4a574;
         transition: background 0.2s, color 0.2s;
-        box-shadow: 0 2px 8px 0 rgba(212,165,116,0.15);
     }
-    .modal-btn:hover {
-        background: #e5c8a8;
-        color: #3e2723;
+    .hobby-tag:hover {
+        background: #d4a574;
+        color: #5c4033;
     }
+    
+    /* Blog Modal Styles */
+    .blog-modal {
+        max-width: 95vw;
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+    .blog-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1.5rem;
+        max-width: 70ch;
+        margin: 0 auto;
+    }
+    .blog-item {
+        display: flex;
+        gap: 1.5rem;
+        padding: 1rem;
+        background: rgba(212, 165, 116, 0.08);
+        border: 1px solid #d4a574;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .blog-item:hover {
+        background: rgba(212, 165, 116, 0.15);
+        transform: translateX(4px);
+    }
+    .blog-item-image {
+        flex-shrink: 0;
+        width: 120px;
+        height: 120px;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .blog-item-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .blog-item-content {
+        flex: 1;
+        min-width: 0;
+    }
+    .blog-item-content h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.1rem;
+        color: #d4a574;
+        word-wrap: break-word;
+    }
+    .blog-item-content p {
+        margin: 0 0 0.75rem 0;
+        font-size: 0.95rem;
+        color: #e0d5c7;
+        line-height: 1.4;
+    }
+    .blog-item-meta {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .blog-date {
+        font-size: 0.85rem;
+        color: #b8a896;
+    }
+    .blog-tags {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .blog-tag {
+        display: inline-block;
+        background: rgba(212, 165, 116, 0.2);
+        color: #d4a574;
+        padding: 0.25rem 0.75rem;
+        border-radius: 16px;
+        font-size: 0.8rem;
+    }
+    
+    .blog-post-modal {
+        max-width: 95vw;
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+    .blog-post-banner {
+        width: 100%;
+        height: 250px;
+        overflow: hidden;
+    }
+    .blog-post-banner img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .blog-post-meta {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem;
+        border-bottom: 1px solid #d4a574;
+        flex-wrap: wrap;
+    }
+    
+    :global(.blog-post-content) {
+        padding: 2rem 1.5rem;
+        color: #f5f1de;
+        font-size: 1rem;
+        line-height: 1.8;
+        max-width: 75ch;
+        margin: 0 auto;
+    }
+    :global(.blog-post-content h1),
+    :global(.blog-post-content h2),
+    :global(.blog-post-content h3),
+    :global(.blog-post-content h4),
+    :global(.blog-post-content h5),
+    :global(.blog-post-content h6) {
+        color: #d4a574;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        font-weight: 600;
+    }
+    :global(.blog-post-content h1) {
+        font-size: 1.8rem;
+    }
+    :global(.blog-post-content h2) {
+        font-size: 1.5rem;
+    }
+    :global(.blog-post-content h3) {
+        font-size: 1.25rem;
+    }
+    :global(.blog-post-content p) {
+        margin: 1rem 0;
+    }
+    :global(.blog-post-content code) {
+        background: rgba(92, 64, 51, 0.5);
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.95em;
+        color: #f5f1de;
+        border: 1px solid rgba(212, 165, 116, 0.3);
+    }
+    :global(.blog-post-content pre) {
+        background: rgba(92, 64, 51, 0.3);
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 1rem 0;
+        border-left: 3px solid #d4a574;
+    }
+    :global(.blog-post-content pre code) {
+        background: none;
+        padding: 0;
+        border-radius: 0;
+        color: #f5f1de;
+    }
+    :global(.blog-post-content a) {
+        color: #d4a574;
+        text-decoration: underline;
+        transition: color 0.2s;
+    }
+    :global(.blog-post-content a:hover) {
+        color: #e5c8a8;
+    }
+    :global(.blog-post-content blockquote) {
+        border-left: 3px solid #d4a574;
+        margin: 1rem 0;
+        padding-left: 1rem;
+        color: #d4a574;
+        font-style: italic;
+    }
+    :global(.blog-post-content ul),
+    :global(.blog-post-content ol) {
+        margin: 1rem 0;
+        padding-left: 2rem;
+    }
+    :global(.blog-post-content li) {
+        margin: 0.5rem 0;
+    }
+    :global(.blog-post-content img) {
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    :global(.math-block),
+    :global(.math-inline) {
+        color: #d4a574;
+    }
+    :global(.hljs) {
+        background: transparent;
+        color: #f5f1de;
+    }
+    
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
